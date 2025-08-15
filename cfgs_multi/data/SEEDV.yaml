@@ -1,5 +1,5 @@
 dataset_name: 'SEEDV'
-data_dir: 'D:\EEG_data\AutoICA_Processed_EEG\SEED_V\data_3in1'
+data_dir: 'D:/EEG_data/AutoICA_Processed_EEG/SEED_V/data_3in1'
 fs: 125
 n_channs: 60
 n_session: 3
