@@ -1,0 +1,90 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data@data_0: SEED
+  - data@data_1: SEEDIV
+  - data@data_2: SEEDVII
+  - data@data_3: FACED_blink_only
+  - data@data_4: DEAP
+  - data@data_val: SEEDV
+  - model: DGE_Net   # 仍加载你原来的 DGE_Net.yaml；下面对 model.MLLA 的键是增量覆盖
+
+log:
+  run_name: "DGENet_run_v1"
+  mlp_cp_dir: "mlp_cp"
+
+# 训练脚本里会把 data_0~data_4 + data_val 聚合；这里显式给一个空列表占位即可
+data_cfg_list: []
+
+train:
+  seed: 19260832
+  n_fold: 1
+  n_pairs: 1024
+  n_gpu_use: 4
+  iftest: false
+  lr: 3e-4
+  wd: 0.004
+  max_epochs: 50
+  min_epochs: 10
+  num_workers: 16
+  save_interval: 5
+  loss:
+    # SimCLR 温度
+    temp: 0.15
+    # 三个损失的权重：对比/重构/跨域
+    w_sim: 1.0
+    w_rec: 1.0
+    w_cda: 0.0   # 先关掉跨域约束，需要时再开
+
+# —— 模型相关（新增/覆盖部分）——
+model:
+  # 如果你的 MultiModel_PL 会根据是否存在 MLLA 分支来实例化 encoder，
+  # 下面这些键会被新版本 cnn_MLLA 读取；其余保持 DGE_Net.yaml 的默认。
+  MLLA:
+    # 注意力类型（默认 SE，更省显存；如要轻量卷积注意力，改为 "conv"）
+    att_type: se          # se | conv
+    seg_att: 3            # 仅在 att_type=conv 时作为时间核宽（不跨通道）
+    se_reduction: 8
+    dropout: 0.1
+    # temporal conv 的多尺度时间核（仅沿时间维卷积，避免 kernel>input 报错）
+    k_list: [7, 15, 31]
+    # 若想改变通道数可设整数；否则保持与输入通道一致
+    pw_out: null
+
+    # —— 动态图“时空混合”迭代编码器（与你的 idea 对齐）——
+    use_dyn_graph: true
+    graph:
+      layers: 2           # 迭代步数（可先 2，显存紧张可降为 1）
+      topk: 8             # 每个节点保留的邻居数（可按需调小 6/4 以省显存）
+      ema_alpha: 0.8      # 图的指数滑动平均，平滑时变噪声
+      self_loop: true
+      sym: true
+      normalize: row      # row | sym
+      detach_affinity: true  # 估计图时不回传梯度，更稳且省显存
+
+val:
+  # 仅用于特征抽取/MLP验证环节的“折”策略
+  n_fold: "loo"
+
+  extractor:
+    use_pretrain: true
+    ckpt_epoch: 5          # 你在说明里使用的 epoch=04 权重，这里按 5（从1计数）
+    ckpt_tag: v4
+    reverse: true
+    normTrain: false
+    batch_size: 64
+    fea_mode: "me"
+    rn_decay: 0.990
+    LDS: true
+
+  mlp:
+    seed: 19260817
+    lr: 0.0005
+    wd: 0.0022
+    hidden_dim: 128
+    out_dim: ${data_val.n_class}
+    batch_size: 256
+    max_epochs: 25
+    min_epochs: 2
+    num_workers: ${train.num_workers}

@@ -1,0 +1,68 @@
+# cfgs_multi/model/DGE_Net.yaml
+# @package model
+
+encoder: MLLA
+
+MLLA:
+  # 时间编码（你的 MLLA_new）
+  patch_size: 25
+  patch_stride: 12
+  hidden_dim: 128
+  out_dim: 128
+  depth: 3
+  n_heads: 4
+
+  # 统一通道表（可留空用并集兜底；想去掉 Warning 就在这里填满）
+  # uni_channels:
+  #   - Fp1
+  #   - Fp2
+  #   - F7
+  #   - F3
+  #   - Fz
+  #   - F4
+  #   - F8
+  #   - FC5
+  #   - FC1
+  #   - FC2
+  #   - FC6
+  #   - T7
+  #   - C3
+  #   - Cz
+  #   - C4
+  #   - T8
+  #   - CP5
+  #   - CP1
+  #   - CP2
+  #   - CP6
+  #   - P7
+  #   - P3
+  #   - Pz
+  #   - P4
+  #   - P8
+  #   - PO3
+  #   - PO4
+  #   - O1
+  #   - Oz
+  #   - O2
+  #   # ……如需固定 62 通道请在此补齐
+
+  cnn:
+    n_timeFilters: 64
+    timeFilterLen: 5
+    n_msFilters: 64
+    msFilter_timeLen: 3
+    n_channs: 64
+    # ⚠️ 必须 ≥4 个，否则 cnn_MLLA 里会访问下标 3
+    dilation_array: [1, 2, 4, 8]
+    seg_att: false
+    avgPoolLen: 2
+    timeSmootherLen: 1
+    multiFact: 1
+    stratified: false
+    activ: relu
+    temp: 0.15
+    saveFea: false
+    has_att: true
+    extract_mode: "gap"
+    global_att: false
+    att_type: "se"
