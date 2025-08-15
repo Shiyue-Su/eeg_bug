@@ -134,11 +134,13 @@ class MultiModel_PL(pl.LightningModule):
             masked_patches, mask = self._mask_input(original_patches)
 
             summary_vec, feat_map = self.encoder(masked_patches)
-            summary_vec = summary_vec.squeeze()
+
+            # Pool the summary vector over the patch dimension for contrastive/CDA losses
+            summary_vec_pooled = F.adaptive_avg_pool2d(summary_vec, (1, 1)).squeeze()
 
             loss_sim, loss_rec = 0, 0
             if self.w_sim > 0:
-                z1, z2 = torch.chunk(summary_vec, 2, dim=0)
+                z1, z2 = torch.chunk(summary_vec_pooled, 2, dim=0)
                 loss_sim = self.clisa_loss(z1, z2)
                 self.log(f'train/loss_sim_ds{i}', loss_sim, on_step=True, on_epoch=True)
 
@@ -149,7 +151,7 @@ class MultiModel_PL(pl.LightningModule):
                 self.log(f'train/loss_rec_ds{i}', loss_rec, on_step=True, on_epoch=True)
 
             if self.w_cda > 0 and self.cda_loss is not None:
-                all_summaries_for_cda.append(summary_vec)
+                all_summaries_for_cda.append(summary_vec_pooled)
 
             domain_loss = (self.w_sim * loss_sim) + (self.w_rec * loss_rec)
             total_loss += domain_loss
